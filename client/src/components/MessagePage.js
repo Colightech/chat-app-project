@@ -8,6 +8,10 @@ import { MdAttachFile } from "react-icons/md";
 import { FaImages } from "react-icons/fa6";
 import { IoIosVideocam } from "react-icons/io";
 import uploadFile from '../helper/uploadFile';
+import { MdOutlineClose } from "react-icons/md";
+import Loading from './Loading';
+import background_image from '../assets/wallapaper.jpeg'
+import { IoSendSharp } from "react-icons/io5";
 
 const MessagePage = () => {
   const params = useParams()
@@ -21,6 +25,8 @@ const MessagePage = () => {
     online : false,
     _id : ""
   })
+  const [allMessage,setAllMessage] = useState([])
+  const [loading,setLoading] = useState(false)
   const [openImageVideoUpload,setOpenImageVideoUpload] = useState(false)
   const [message,setMessage] = useState({
     text : "",
@@ -35,7 +41,10 @@ const MessagePage = () => {
   const handleUploadImage = async (e) => {
     const file = e.target.files[0]
 
+    setLoading(true)
     const uploadPhoto = await uploadFile(file)
+    setLoading(false)
+    setOpenImageVideoUpload(false)
 
     setMessage( prev => {
       return {
@@ -45,10 +54,22 @@ const MessagePage = () => {
     })
   }
 
+  const handleClearUploadImage = () => {
+    setMessage( prev => {
+      return {
+        ...prev,
+        imageUrl : ""
+      }
+    })
+  }
+
   const handleUploadVideo = async (e) => {
     const file = e.target.files[0]
 
+    setLoading(true)
     const uploadVideo = await uploadFile(file)
+    setLoading(false)
+    setOpenImageVideoUpload(false)
 
     setMessage( prev => {
       return {
@@ -58,19 +79,67 @@ const MessagePage = () => {
     })
   }
 
+  const handleClearUploadVideo = () => {
+    setMessage( prev => {
+      return {
+        ...prev,
+        videoUrl : ""
+      }
+    })
+  }
+
   useEffect(()=>{
     if(socketConnection) {
       socketConnection.emit('message-page',params.userId)
 
       socketConnection.on('message-page',(data)=>{
-        console.log('user detail', data)
         setDataUser(data)
+      })
+      socketConnection.on('message',(data) => {
+        setAllMessage(data)
       })
     }
   },[socketConnection,params?.userId,user])
 
+ 
+
+  const handleOnChange = (e) => {
+    const { name, value } = e.target
+
+    setMessage(prev => {
+      return {
+        ...prev,
+        text : value
+      }
+    })
+  }
+  
+
+  const handleSendMessage = (e) => {
+    e.preventDefault()
+    
+    if(message.text || message.imageUrl || message.videoUrl) {
+      if(socketConnection) {
+        socketConnection.emit('new-message',{
+          sender : user?._id,
+          receiver : params?.userId,
+          text : message.text,
+          imageUrl : message.imageUrl,
+          videoUrl : message.videoUrl,
+          msgByUserId : user?._id
+        })
+        console.log("chat message", allMessage)
+        setMessage({
+          text : "",
+          imageUrl : "",
+          videoUrl : ""
+        })
+      }
+    }
+  }
+
   return (
-    <div>
+    <div style={{ backgroundImage: `url(${background_image})`}} className='bg-no-repeat bg-cover'>
         <header className='sticky top-0 h-16 flex justify-between items-center pr-3 bg-white'>
           <div className='flex items-center gap-3'>
               <Link to={'/'} className='lg:hidden'>
@@ -104,24 +173,68 @@ const MessagePage = () => {
 
         {/* Display All Message */}
         <div>
-            <section className='h-[calc(100vh-120px)] overflow-x-hidden overflow-y-scroll scrollBar'>
+            <section className='h-[calc(100vh-120px)] overflow-x-hidden overflow-y-scroll scrollBar relative bg-slate-200 bg-opacity-40'>
+              {/* Loading */}
+                  {
+                    loading && (
+                      <div className='flex justify-center items-center w-full h-full'>
+                        <Loading />
+                      </div>
+                    )
+                  }
               {/* Display sent image */}
               {
                 message.imageUrl && (
                   <div className='w-full h-full bg-slate-500 bg-opacity-30 flex justify-center items-center'>
-                  <div className='bg-white p-1 rounded'>
-                     <img 
-                      src={message.imageUrl}
-                      width={300}
-                      height={300}
-                      alt='uploadImage'
-                     />
-                  </div>
+                    <div onClick={handleClearUploadImage} className='w-fit p-2 absolute top-2 right-2 hover:text-white cursor-pointer'>
+                        <MdOutlineClose size={25} />
+                    </div>
+                    <div className='bg-white p-1 rounded'>
+                      <img 
+                        src={message.imageUrl}
+                        alt='uploadImage'
+                        className='aspect-square w-full h-full max-w-sm'
+                      />
+                    </div>
                   </div>
                 )
               }
-                Show all messages
+
+              {/* Display sent Video */}
+              {
+                message.videoUrl && (
+                  <div className='w-full h-full bg-slate-500 bg-opacity-30 flex justify-center items-center'>
+                    <div onClick={handleClearUploadVideo} className='w-fit p-2 absolute top-2 right-2 hover:text-white cursor-pointer'>
+                        <MdOutlineClose size={25} />
+                    </div>
+                    <div className='bg-white p-1 rounded'>
+                      <video
+                        src={message.videoUrl}
+                        controls
+                        muted
+                        autoPlay
+                        className='aspect-video w-full h-full max-w-sm m-1'
+                      />
+                    </div>
+                  </div>
+                )
+              }
+
+              {/* Show all messages */}
+              <div className='flex flex-col gap-2'>
+                  {
+                    allMessage.map((msg,index) => {
+                      return (
+                        <div className='bg-green-500 text-white font-bold p-1 rounded w-fit flex'>
+                            <p>{msg.text}</p>
+                        </div>
+                      )
+                    })
+                  }
+              </div>
+  
             </section>
+
 
             {/* Send Message */}
             <section className='h-14 bg-white flex items-center p-4'>
@@ -165,6 +278,23 @@ const MessagePage = () => {
                       )
                     }
                 </div>
+                {/* Send Message Input Box */}
+                <form className='w-full  flex gap-3' onSubmit={handleSendMessage}>
+                    <input
+                        type='text'
+                        placeholder='Message here...'
+                        value={message.text}
+                        name='text'
+                        onChange={handleOnChange}
+                        className='py-2 px-4 w-full h-full outline-none'
+                    />
+                    <div className='w-15 h-15'>
+                      <button className='bg-primary w-10 h-10 rounded-full flex justify-center items-center text-white'>
+                        <IoSendSharp size={20} />
+                      </button>
+                    </div>
+
+                </form>
             </section>
         </div>
     </div>

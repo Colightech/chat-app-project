@@ -2,21 +2,26 @@ const mongoose = require("mongoose")
 
 
 const messageSchema = new mongoose.Schema({
-    text: {
+    text : {
         type: String,
         default: "",
     },
-    imageUrl: {
+    imageUrl : {
         type: String,
         default: "",
     },
-    videoUrl: {
+    videoUrl : {
         type: String,
         default: ""
     },
-    seen: {
+    seen : {
         type: Boolean,
         default: false
+    },
+    msgByUserId : {
+        type: mongoose.Schema.ObjectId,
+        require: true,
+        ref: "User"
     }
 },{
     timestamps: true
