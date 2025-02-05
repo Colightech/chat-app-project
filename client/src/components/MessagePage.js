@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { Link, useParams } from 'react-router-dom'
 import Avatar from './avatar'
@@ -12,6 +12,7 @@ import { MdOutlineClose } from "react-icons/md";
 import Loading from './Loading';
 import background_image from '../assets/wallapaper.jpeg'
 import { IoSendSharp } from "react-icons/io5";
+import moment from 'moment'
 
 const MessagePage = () => {
   const params = useParams()
@@ -25,14 +26,22 @@ const MessagePage = () => {
     online : false,
     _id : ""
   })
-  const [allMessage,setAllMessage] = useState([])
-  const [loading,setLoading] = useState(false)
-  const [openImageVideoUpload,setOpenImageVideoUpload] = useState(false)
+
   const [message,setMessage] = useState({
     text : "",
     imageUrl : "",
     videoUrl : ""
   })
+  const [allMessage,setAllMessage] = useState([])
+  const [loading,setLoading] = useState(false)
+  const [openImageVideoUpload,setOpenImageVideoUpload] = useState(false)
+  const currentMessage = useRef(null)
+
+  useEffect(()=> {
+     if(currentMessage.current) {
+      currentMessage.current.scrollIntoView({behavior : 'smooth', block : 'end'})
+     }
+  },[allMessage])
 
   const handleOpenImageVideo = () => {
     setOpenImageVideoUpload(prev => !prev)
@@ -128,7 +137,7 @@ const MessagePage = () => {
           videoUrl : message.videoUrl,
           msgByUserId : user?._id
         })
-        console.log("chat message", allMessage)
+        // To Clear All Field After Sending
         setMessage({
           text : "",
           imageUrl : "",
@@ -174,18 +183,47 @@ const MessagePage = () => {
         {/* Display All Message */}
         <div>
             <section className='h-[calc(100vh-120px)] overflow-x-hidden overflow-y-scroll scrollBar relative bg-slate-200 bg-opacity-40'>
-              {/* Loading */}
+
+              {/* Show all messages */}
+              <div className='flex flex-col'  ref={currentMessage}>
                   {
-                    loading && (
-                      <div className='flex justify-center items-center w-full h-full'>
-                        <Loading />
-                      </div>
-                    )
+                    allMessage.map((msg,index) => {
+                      return (
+                        <div className={`bg-white m-2 p-1 w-fit rounded max-w-sm relative ${user._id === msg.msgByUserId ? "ml-auto bg-green-300" : ""}`}>
+                           <div>
+                             {
+                               msg?.imageUrl && (
+                                  <img
+                                     src={msg.imageUrl}
+                                     className='w-full h-full object-scale-down' 
+                                  />
+                                )
+                              }
+                           </div>
+                           <div className='flex gap-3 items-end'>
+                              <p className='w-fit'>{msg.text}</p>
+                              <p className='ml-auto w-16 text-slate-400 pl-1.5 text-xs'>{moment(msg.createdAt).format('LT')}</p>
+                           </div>
+                        </div>
+                      )
+                    })
                   }
+              </div>
+
+
+              {/* Loading */}
+              {
+                loading && (
+                  <div className='flex justify-center sticky bottom-0 items-center w-full h-full'>
+                       <Loading />
+                  </div>
+                )
+              }
+
               {/* Display sent image */}
               {
                 message.imageUrl && (
-                  <div className='w-full h-full bg-slate-500 bg-opacity-30 flex justify-center items-center'>
+                  <div className='w-full h-full sticky bottom-0 bg-slate-500 bg-opacity-30 absolute  flex justify-center items-center  '>
                     <div onClick={handleClearUploadImage} className='w-fit p-2 absolute top-2 right-2 hover:text-white cursor-pointer'>
                         <MdOutlineClose size={25} />
                     </div>
@@ -203,7 +241,7 @@ const MessagePage = () => {
               {/* Display sent Video */}
               {
                 message.videoUrl && (
-                  <div className='w-full h-full bg-slate-500 bg-opacity-30 flex justify-center items-center'>
+                  <div className='w-full h-full sticky bottom-0 bg-slate-500 bg-opacity-30 flex justify-center items-center'>
                     <div onClick={handleClearUploadVideo} className='w-fit p-2 absolute top-2 right-2 hover:text-white cursor-pointer'>
                         <MdOutlineClose size={25} />
                     </div>
@@ -219,22 +257,7 @@ const MessagePage = () => {
                   </div>
                 )
               }
-
-              {/* Show all messages */}
-              <div className='flex flex-col gap-2'>
-                  {
-                    allMessage.map((msg,index) => {
-                      return (
-                        <div className='bg-green-500 text-white font-bold p-1 rounded w-fit flex'>
-                            <p>{msg.text}</p>
-                        </div>
-                      )
-                    })
-                  }
-              </div>
-  
             </section>
-
 
             {/* Send Message */}
             <section className='h-14 bg-white flex items-center p-4'>
@@ -260,6 +283,7 @@ const MessagePage = () => {
                                 </div>
                                 <p>video</p>
                               </label>
+                            
                               <input 
                                 type='file'
                                 id='uploadImage'
