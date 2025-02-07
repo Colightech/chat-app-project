@@ -19,6 +19,7 @@ const MessagePage = () => {
   const socketConnection = useSelector(state => state?.user?.socketConnection)
   const user = useSelector(state => state?.user)
 
+
   const [dataUser,setDataUser] = useState({
     name : "",
     email : "",
@@ -189,7 +190,8 @@ const MessagePage = () => {
                   {
                     allMessage.map((msg,index) => {
                       return (
-                        <div className={`bg-white m-2 p-1 w-fit rounded max-w-sm relative ${user._id === msg.msgByUserId ? "ml-auto bg-green-300" : ""}`}>
+                        <div className={`bg-white m-2 p-1 w-fit rounded max-w-[280px] md:max-w-sm lg:max-w-md ${user._id === msg.msgByUserId ? "ml-auto bg-green-300" : ""}`}>
+                          {/* Chat Image */}
                            <div>
                              {
                                msg?.imageUrl && (
@@ -200,6 +202,23 @@ const MessagePage = () => {
                                 )
                               }
                            </div>
+
+                           {/* Chat Video */}
+                           <div>
+                             {
+                               msg?.videoUrl && (
+                                  <video
+                                     src={msg.videoUrl}
+                                     className='w-full h-full object-scale-down'
+                                     controls
+                                     muted
+                                     autoPlay 
+                                  />
+                                )
+                              }
+                           </div>
+
+                           {/* Chat Text */}
                            <div className='flex gap-3 items-end'>
                               <p className='w-fit'>{msg.text}</p>
                               <p className='ml-auto w-16 text-slate-400 pl-1.5 text-xs'>{moment(msg.createdAt).format('LT')}</p>
@@ -259,7 +278,7 @@ const MessagePage = () => {
               }
             </section>
 
-            {/* Send Message */}
+            {/* Send Message Input */}
             <section className='h-14 bg-white flex items-center p-4'>
                 <div className='relative'>
                     <button onClick={handleOpenImageVideo} className='flex justify-center items-center w-10 h-10 rounded-full hover:bg-primary hover:text-white'>
