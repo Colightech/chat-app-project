@@ -1,0 +1,153 @@
+const express = require("express");
+const { Server } = require("socket.io");
+const http = require("http");
+const getUserDetailsFromToken = require("../helpers/GetUserDetailsFromToken");
+const userModel = require("../models/UserModel");
+const { conversationModel, messageModel } = require("../models/ConversationModel");
+const GetConversation = require("../helpers/getConversation");
+
+const app = express();
+
+// Socket Connection
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: process.env.FRONTEND_URL,
+        credentials: true,
+    },
+});
+
+// Store Online Users
+const onlineUser = new Set();
+
+io.on("connection", async (socket) => {
+    console.log("User connected:", socket.id);
+
+    try {
+        const token = socket.handshake.auth?.token;
+        if (!token) return socket.disconnect();
+
+        const user = await getUserDetailsFromToken(token);
+        if (!user?._id) return socket.disconnect();
+
+        const userId = user._id.toString();
+        socket.join(userId);
+        onlineUser.add(userId);
+
+        // Emit online users list
+        io.emit("onlineuser", Array.from(onlineUser));
+
+        // Handle Message Page Request
+        socket.on("message-page", async (userId) => {
+            try {
+                const userDetails = await userModel.findById(userId).select("-password");
+                if (!userDetails) return;
+
+                const payload = {
+                    _id: userDetails._id,
+                    name: userDetails.name,
+                    email: userDetails.email,
+                    profile_pic: userDetails.profile_pic,
+                    online: onlineUser.has(userId),
+                };
+
+                socket.emit("message-page", payload);
+
+                // Fetch previous messages
+                const getConversationMessage = await conversationModel.findOne({
+                    $or: [{ sender: user._id, receiver: userId }, { sender: userId, receiver: user._id }],
+                })
+                    .populate("message")
+                    .sort({ updatedAt: -1 });
+
+                socket.emit("message", getConversationMessage?.message || []);
+            } catch (error) {
+                console.error("Error in message-page event:", error);
+            }
+        });
+
+        // Handle New Messages
+        socket.on("new-message", async (data) => {
+            try {
+                let conversation = await conversationModel.findOne({
+                    $or: [{ sender: data.sender, receiver: data.receiver }, { sender: data.receiver, receiver: data.sender }],
+                });
+
+                if (!conversation) {
+                    conversation = await new conversationModel({
+                        sender: data.sender,
+                        receiver: data.receiver,
+                    }).save();
+                }
+
+                const newMessage = await new messageModel({
+                    text: data.text,
+                    imageUrl: data.imageUrl,
+                    videoUrl: data.videoUrl,
+                    msgByUserId: data.msgByUserId,
+                }).save();
+
+                await conversationModel.updateOne({ _id: conversation._id }, { $push: { message: newMessage._id } });
+
+                // Fetch updated messages
+                const getConversationMessage = await conversationModel
+                    .findOne({ $or: [{ sender: data.sender, receiver: data.receiver }, { sender: data.receiver, receiver: data.sender }] })
+                    .populate("message")
+                    .sort({ updatedAt: -1 });
+
+                // Emit to both sender and receiver
+                io.to(data.sender).emit("message", getConversationMessage?.message || []);
+                io.to(data.receiver).emit("message", getConversationMessage?.message || []);
+
+                // Update Sidebar Conversations
+                io.to(data.sender).emit("conversation", await GetConversation(data.sender));
+                io.to(data.receiver).emit("conversation", await GetConversation(data.receiver));
+            } catch (error) {
+                console.error("Error in new-message event:", error);
+            }
+        });
+
+        // Handle Sidebar Updates
+        socket.on("sidebar", async (CurrentUserId) => {
+            try {
+                socket.emit("conversation", await GetConversation(CurrentUserId));
+            } catch (error) {
+                console.error("Error in sidebar event:", error);
+            }
+        });
+
+        // Handle Seen Messages
+        socket.on("seen", async (msgByUserId) => {
+            try {
+                const conversation = await conversationModel.findOne({
+                    $or: [{ sender: userId, receiver: msgByUserId }, { sender: msgByUserId, receiver: userId }],
+                });
+
+                if (!conversation) return;
+
+                await messageModel.updateMany(
+                    { _id: { $in: conversation.message || [] }, msgByUserId },
+                    { $set: { seen: true } }
+                );
+
+                io.to(userId).emit("conversation", await GetConversation(userId));
+                io.to(msgByUserId).emit("conversation", await GetConversation(msgByUserId));
+            } catch (error) {
+                console.error("Error in seen event:", error);
+            }
+        });
+
+        // Handle Disconnection
+        socket.on("disconnect", () => {
+            onlineUser.delete(userId);
+            console.log("User disconnected:", socket.id);
+            io.emit("onlineuser", Array.from(onlineUser));
+        });
+
+    } catch (error) {
+        console.error("Error during user connection:", error);
+        socket.disconnect();
+    }
+});
+
+module.exports = { app, server };
