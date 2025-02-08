@@ -102,6 +102,8 @@ const MessagePage = () => {
     if(socketConnection) {
       socketConnection.emit('message-page',params.userId)
 
+      socketConnection.emit('seen',params.userId)
+
       socketConnection.on('message-page',(data)=>{
         setDataUser(data)
       })
@@ -190,7 +192,7 @@ const MessagePage = () => {
                   {
                     allMessage.map((msg,index) => {
                       return (
-                        <div className={`bg-white m-2 p-1 w-fit rounded max-w-[280px] md:max-w-sm lg:max-w-md ${user._id === msg.msgByUserId ? "ml-auto bg-green-300" : ""}`}>
+                        <div className={` m-2 p-1 w-fit rounded max-w-[280px] md:max-w-sm lg:max-w-md ${user._id === msg.msgByUserId ? "ml-auto  bg-green-300" : "bg-white"}`}>
                           {/* Chat Image */}
                            <div>
                              {

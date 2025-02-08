@@ -62,6 +62,7 @@ const CheckPassword = () => {
         dispatch(setToken(res?.data?.token))
         localStorage.setItem("token",res?.data?.token)
 
+        // To clear password input field
         setData({ 
           password : "" 
         });

@@ -34,7 +34,7 @@ io.on('connection', async (socket)=>{
     const user = await getUserDetailsFromToken(token)
 
     // Create a Room
-    socket.join(user?._id.toString())
+    socket.join(user?._id?.toString())
     // Online User
     onlineUser.add(user?._id?.toString())
 
@@ -127,7 +127,28 @@ io.on('connection', async (socket)=>{
 
      })
     
+     // To clear Unseen Count After has been open and Red
+     socket.on('seen', async (msgByUserId) => {
+        let conversation = await conversationModel.findOne({
+            "$or" : [
+                {sender : user?._id, receiver : msgByUserId},
+                {sender : msgByUserId, receiver : user?._id}
+            ]
+        })
 
+        const conversationMessageId = conversation?.message || []
+
+        const updateMessage = await messageModel.updateMany(
+            { _id : { "$in" : conversationMessageId }, msgByUserId : msgByUserId },
+            { "$set" : { seen : true }}
+        )
+        // Send Conversation
+        const conversationSender = await GetConversation(user?._id?.toString())
+        const conversationReceiver = await GetConversation(msgByUserId)
+
+        io.to(user?._id?.toString()).emit('conversation',conversationSender)
+        io.to(msgByUserId).emit('conversation',conversationReceiver)
+     })
 
 
 
@@ -135,7 +156,7 @@ io.on('connection', async (socket)=>{
 
     // Disconnect User
     socket.on('disconnect', ()=>{
-        onlineUser.delete(user?._id)
+        onlineUser.delete(user?._id?.toString())
 
         console.log("Disconnect User", socket.id)
     })

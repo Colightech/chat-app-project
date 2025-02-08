@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { BsChatDots } from "react-icons/bs";
 import { FaUserPlus } from "react-icons/fa";
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { IoMdLogOut } from "react-icons/io";
 import Avatar from '../components/avatar'
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import EditUserDetails from './EditUserDetails';
 import Divider from './Divider';
 import { GoArrowUpLeft } from "react-icons/go";
@@ -12,6 +12,7 @@ import SearchUser from './SearchUser';
 import moment from 'moment'
 import { FaImage } from "react-icons/fa6";
 import { FaVideo } from "react-icons/fa";
+import { logout } from '../redux/userSlice'
 
 
 const SideBar = () => {
@@ -21,6 +22,8 @@ const SideBar = () => {
      const [allUser,setAllUser] = useState([])
      const [openSearchUser,setOpenSearchUser] = useState(false)
      const socketConnection = useSelector(state => state?.user?.socketConnection)
+     const dispatch = useDispatch()
+     const navigate = useNavigate()
 
      // To Display the User you Have Chatted with on The Sidebar
      useEffect(() => {
@@ -56,7 +59,11 @@ const SideBar = () => {
           }
      },[socketConnection,user])
 
-     console.log("All User conversation message", allUser)
+     const handleLogOut = () => {
+          dispatch(logout())
+          navigate('/checkemail')
+          localStorage.clear()
+     }
 
   return (
     <div className='w-full h-full grid grid-cols-[48px,1fr] bg-white'>
@@ -82,7 +89,7 @@ const SideBar = () => {
                          />
                     </button>
 
-                     <button className='w-12 h-12 flex justify-center items-center cursor-pointer hover:bg-slate-200 rounded-md mt-1' title='logout'>
+                     <button onClick={handleLogOut} className='w-12 h-12 flex justify-center items-center cursor-pointer hover:bg-slate-200 rounded-md mt-1' title='logout'>
                          <span className='-ml-1'>
                                <IoMdLogOut  size={25}/>
                          </span>
@@ -146,7 +153,12 @@ const SideBar = () => {
                                                   <p className='text-xs line-clamp-1 text-slate-500'>{con?.lastMsg?.text}</p> 
                                              </div>
                                              <p className='ml-auto w-16 text-slate-400 pl-1.5 text-xs'>{moment(con?.lastMsg?.createdAt).format('LT')}</p>
-                                             <p className='bg-green-500 w-5 text-xs m-1 h-5 rounded-full flex items-center justify-center text-white font-bold'>{con.unSeenMsg}</p>
+                                             {
+                                                  Boolean(con.unSeenMsg) && (
+                                                       <p className='bg-green-500 w-5 text-xs m-1 h-5 rounded-full flex items-center justify-center text-white font-bold'>{con.unSeenMsg}</p>
+                                                  )
+                                             }
+                                             
                                         </div>
                                    </NavLink>
                               )

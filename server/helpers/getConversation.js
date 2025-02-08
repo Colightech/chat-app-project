@@ -12,7 +12,15 @@ const GetConversation = async (CurrentUserId) => {
         }).sort({updatedAt : -1 }).populate('message').populate('sender').populate('receiver')
 
         const conversation = currentUserConversation.map((converse) => {
-            const countUnseenMsg = converse.message.reduce((prev,curr) => prev + (curr.seen ? 0 : 1),0)
+            const countUnseenMsg = converse.message.reduce((prev,curr) => {
+                const msgByUserId = curr?.msgByUserId?.toString()
+                if (msgByUserId !== CurrentUserId) {
+                    return prev + (curr?.seen ? 0 : 1)
+                }else{
+                    return prev
+                }
+            },0)
+            
             return {
                 _id : converse?._id,
                 sender : converse?.sender,
