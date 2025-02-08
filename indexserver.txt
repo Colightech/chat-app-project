@@ -1,0 +1,57 @@
+//the index.js server i was using before i got the one from chat-gPt
+
+
+const port = process.env.PORT  || 8000;
+const express = require("express");
+const cors = require("cors");
+require("dotenv").config()
+const connectDB = require("./config/connectDB");
+const router = require("./routes/Router");
+const cookiesParser = require("cookie-parser")
+const { app, server} = require('./socket/index')
+
+
+// const app = express()
+
+app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true
+}))
+
+app.use(express.json())
+app.use(cookiesParser())
+
+app.get('/', (req,res)=>{
+    res.send(
+        "Express App is Now working and Running on Port "+port
+    )
+})
+
+//All API Endpoint routers
+app.use('/api', router)
+
+connectDB().then(()=>{
+    server.listen(port, ()=>{
+        console.log("Server Running on Port "+port)
+    })
+})
+
+
+
+IF YOU WANT TO USE HELMET ALONG WITH YOUR SERVER WHICH CHOICE FOR SECURITY PURPOSE
+What Helmet Protects Against
+Helmet automatically enables several middleware functions, including:
+
+helmet.hidePoweredBy() – Hides the X-Powered-By header.
+helmet.xssFilter() – Adds small XSS protection.
+helmet.frameguard() – Prevents clickjacking attacks.
+helmet.hsts() – Enforces HTTPS connections.
+helmet.noSniff() – Prevents browsers from guessing MIME types.
+helmet.ieNoOpen() – Blocks old Internet Explorer download issues.
+If you need to disable a specific module, you can do so like this:
+
+app.use(
+    helmet({
+        frameguard: false, // Disable Clickjacking protection
+    })
+);
